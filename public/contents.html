@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secret App - Contents</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-left">
+            <img id="userPicture" class="nav-profile-picture" src="" alt="Profile Picture">
+            <span id="userName" class="nav-username"></span>
+        </div>
+        <div class="nav-right">
+            <div class="burger-menu">
+                <i class="fas fa-bars" id="menuButton"></i>
+                <div class="dropdown-menu" id="dropdownMenu">
+                    <a href="/dashboard">Dashboard</a>
+                    <a href="/contents" class="active">My Files</a>
+                    <a href="/page2">Page 2</a>
+                    <a href="/page3">Page 3</a>
+                    <div class="menu-divider"></div>
+                    <a href="/logout" class="logout-link">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="content-box">
+            <h1>My Uploaded Files</h1>
+            <div class="files-list" id="filesList">
+                <!-- Files will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Add modal for editing -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Edit File</h2>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <textarea id="fileContent" rows="20"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button id="saveChanges" class="save-btn">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add encryption modal -->
+    <div id="encryptionModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="encryptionModalTitle">Encrypt File</h2>
+                <span class="close" id="closeEncryptionModal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="encryption-form">
+                    <div class="form-group">
+                        <label for="algorithm">Encryption Algorithm:</label>
+                        <select id="algorithm" class="algorithm-select">
+                            <optgroup label="AES">
+                                <option value="aes-256-gcm">AES-256-GCM (Recommended)</option>
+                                <option value="aes-256-cbc">AES-256-CBC</option>
+                                <option value="aes-256-ctr">AES-256-CTR</option>
+                                <option value="aes-256-cfb">AES-256-CFB</option>
+                                <option value="aes-256-ofb">AES-256-OFB</option>
+                                <option value="aes-192-cbc">AES-192-CBC</option>
+                                <option value="aes-192-ctr">AES-192-CTR</option>
+                                <option value="aes-192-cfb">AES-192-CFB</option>
+                                <option value="aes-192-ofb">AES-192-OFB</option>
+                                <option value="aes-128-gcm">AES-128-GCM</option>
+                                <option value="aes-128-cbc">AES-128-CBC</option>
+                                <option value="aes-128-ctr">AES-128-CTR</option>
+                                <option value="aes-128-cfb">AES-128-CFB</option>
+                                <option value="aes-128-ofb">AES-128-OFB</option>
+                            </optgroup>
+                            <optgroup label="Blowfish">
+                                <option value="bf-cbc">Blowfish-CBC</option>
+                                <option value="bf-cfb">Blowfish-CFB</option>
+                                <option value="bf-ecb">Blowfish-ECB</option>
+                                <option value="bf-ofb">Blowfish-OFB</option>
+                            </optgroup>
+                            <optgroup label="Camellia">
+                                <option value="camellia-256-cbc">Camellia-256-CBC</option>
+                                <option value="camellia-192-cbc">Camellia-192-CBC</option>
+                                <option value="camellia-128-cbc">Camellia-128-CBC</option>
+                            </optgroup>
+                            <optgroup label="DES">
+                                <option value="des-ede3-cbc">Triple DES-CBC</option>
+                                <option value="des-cbc">DES-CBC</option>
+                            </optgroup>
+                            <optgroup label="IDEA">
+                                <option value="idea-cbc">IDEA-CBC</option>
+                                <option value="idea-cfb">IDEA-CFB</option>
+                                <option value="idea-ecb">IDEA-ECB</option>
+                                <option value="idea-ofb">IDEA-OFB</option>
+                            </optgroup>
+                            <optgroup label="RC2/RC4">
+                                <option value="rc2-cbc">RC2-CBC</option>
+                                <option value="rc4">RC4</option>
+                            </optgroup>
+                            <optgroup label="SEED">
+                                <option value="seed-cbc">SEED-CBC</option>
+                                <option value="seed-cfb">SEED-CFB</option>
+                                <option value="seed-ecb">SEED-ECB</option>
+                                <option value="seed-ofb">SEED-OFB</option>
+                            </optgroup>
+                        </select>
+                        <p class="algorithm-info" id="algorithmInfo"></p>
+                    </div>
+                    <div class="form-group">
+                        <label for="password">Enter Password:</label>
+                        <input type="password" id="password" class="password-field">
+                        <p id="encryptionError" class="error-message"></p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="confirmEncryption" class="save-btn">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Fetch user data
+        window.addEventListener('load', async () => {
+            try {
+                const [userResponse, filesResponse] = await Promise.all([
+                    fetch('/api/user-data'),
+                    fetch('/api/files')
+                ]);
+                
+                const userData = await userResponse.json();
+                const filesData = await filesResponse.json();
+
+                // Update user info
+                document.getElementById('userPicture').src = userData.picture;
+                document.getElementById('userName').textContent = 
+                    `${userData.firstName} ${userData.lastName}`;
+
+                // Display files
+                const filesList = document.getElementById('filesList');
+                if (filesData.files.length === 0) {
+                    filesList.innerHTML = '<p class="no-files">No files uploaded yet</p>';
+                } else {
+                    filesList.innerHTML = filesData.files.map(file => `
+                        <div class="file-item" data-filename="${file.filename}" data-encrypted="${file.isEncrypted}">
+                            <i class="fas ${file.fileType === 'image' ? 'fa-image' : 'fa-file-text'} file-icon"></i>
+                            <div class="file-details">
+                                <div class="file-preview">
+                                    ${file.fileType === 'image' && !file.isEncrypted ? 
+                                        `<img src="/api/files/${file.filename}/content" class="image-preview" alt="Preview">` : 
+                                        ''
+                                    }
+                                </div>
+                                <span class="file-name">${file.originalName}</span>
+                                <span class="file-date">${new Date(file.uploadDate).toLocaleDateString()}</span>
+                                ${file.isEncrypted ? '<span class="encrypted-badge">🔒 Encrypted</span>' : ''}
+                            </div>
+                            <div class="file-actions">
+                                ${file.fileType === 'text' ? `
+                                    <button onclick="editFile('${file.filename}')" class="action-btn edit" ${file.isEncrypted ? 'disabled' : ''}>
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                ` : ''}
+                                ${file.isEncrypted ? `
+                                    <button onclick="decryptFile('${file.filename}')" class="action-btn decrypt" title="Decrypt File">
+                                        <i class="fas fa-unlock"></i>
+                                    </button>
+                                ` : `
+                                    <button onclick="encryptFile('${file.filename}')" class="action-btn encrypt" title="Encrypt File">
+                                        <i class="fas fa-lock"></i>
+                                    </button>
+                                `}
+                                <button onclick="downloadFile('${file.filename}')" class="action-btn">
+                                    <i class="fas fa-download"></i>
+                                </button>
+                                <button onclick="deleteFile('${file.filename}')" class="action-btn delete">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Error fetching data:', error);
+            }
+        });
+
+        // File actions
+        async function downloadFile(filename) {
+            window.location.href = `/download/${filename}`;
+        }
+
+        async function deleteFile(filename) {
+            if (confirm('Are you sure you want to delete this file?')) {
+                try {
+                    const response = await fetch(`/api/files/${filename}`, {
+                        method: 'DELETE'
+                    });
+                    if (response.ok) {
+                        window.location.reload();
+                    }
+                } catch (error) {
+                    console.error('Error deleting file:', error);
+                }
+            }
+        }
+
+        // Add modal functionality
+        const modal = document.getElementById('editModal');
+        const closeBtn = document.getElementsByClassName('close')[0];
+        const saveBtn = document.getElementById('saveChanges');
+        const fileContent = document.getElementById('fileContent');
+        let currentEditingFile = '';
+
+        async function editFile(filename) {
+            const fileElement = document.querySelector(`[data-filename="${filename}"]`);
+            if (fileElement.dataset.encrypted === 'true') {
+                alert('Please decrypt the file before editing');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/files/${filename}/content`);
+                if (!response.ok) {
+                    throw new Error('Could not read file content');
+                }
+                const data = await response.text();
+                fileContent.value = data;
+                currentEditingFile = filename;
+                modal.style.display = 'block';
+            } catch (error) {
+                console.error('Error fetching file content:', error);
+                alert('Error reading file content');
+            }
+        }
+
+        closeBtn.onclick = function() {
+            modal.style.display = 'none';
+        }
+
+        window.onclick = function(event) {
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        saveBtn.onclick = async function() {
+            try {
+                const response = await fetch(`/api/files/${currentEditingFile}/content`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'text/plain'
+                    },
+                    body: fileContent.value
+                });
+
+                if (response.ok) {
+                    modal.style.display = 'none';
+                    // Show success message
+                    alert('File saved successfully!');
+                } else {
+                    throw new Error('Failed to save file');
+                }
+            } catch (error) {
+                console.error('Error saving file:', error);
+                alert('Error saving file: ' + error.message);
+            }
+        }
+
+        // Menu toggle logic
+        const menuButton = document.getElementById('menuButton');
+        const dropdownMenu = document.getElementById('dropdownMenu');
+
+        menuButton.addEventListener('click', () => {
+            dropdownMenu.classList.toggle('show');
+        });
+
+        window.addEventListener('click', (event) => {
+            if (!event.target.matches('.fa-bars') && !event.target.matches('.dropdown-menu')) {
+                if (dropdownMenu.classList.contains('show')) {
+                    dropdownMenu.classList.remove('show');
+                }
+            }
+        });
+
+        // Add encryption modal functionality
+        const encryptionModal = document.getElementById('encryptionModal');
+        const closeEncryptionModal = document.getElementById('closeEncryptionModal');
+        const confirmEncryptionBtn = document.getElementById('confirmEncryption');
+        const passwordInput = document.getElementById('password');
+        const encryptionModalTitle = document.getElementById('encryptionModalTitle');
+        const encryptionError = document.getElementById('encryptionError');
+        let currentFile = '';
+        let isEncrypting = true;
+
+        async function encryptFile(filename) {
+            const fileElement = document.querySelector(`[data-filename="${filename}"]`);
+            
+            try {
+                const contentResponse = await fetch(`/api/files/${filename}/content`);
+                if (!contentResponse.ok) {
+                    throw new Error('Could not read file content');
+                }
+                
+                const content = await contentResponse.text();
+                showEncryptionDialog(filename, true, content);
+            } catch (error) {
+                console.error('Error reading file:', error);
+                alert('Error reading file content');
+            }
+        }
+
+        async function decryptFile(filename) {
+            showEncryptionDialog(filename, false);
+        }
+
+        function showEncryptionDialog(filename, isEncrypting, content = null) {
+            currentFile = filename;
+            window.isEncrypting = isEncrypting;
+            
+            encryptionModalTitle.textContent = isEncrypting ? 'Encrypt File' : 'Decrypt File';
+            passwordInput.value = '';
+            encryptionError.textContent = '';
+            
+            // Show/hide algorithm selection based on operation
+            algorithmSelect.parentElement.style.display = isEncrypting ? 'block' : 'none';
+            
+            encryptionModal.style.display = 'block';
+
+            if (content) {
+                encryptionModal.dataset.content = content;
+            }
+        }
+
+        closeEncryptionModal.onclick = function() {
+            encryptionModal.style.display = 'none';
+        }
+
+        confirmEncryptionBtn.onclick = async function() {
+            const password = passwordInput.value;
+            const algorithm = algorithmSelect.value;
+
+            if (!password) {
+                encryptionError.textContent = 'Password is required';
+                return;
+            }
+
+            try {
+                const endpoint = window.isEncrypting ? '/api/files/encrypt' : '/api/files/decrypt';
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        filename: currentFile,
+                        password: password,
+                        algorithm: algorithm,
+                        content: encryptionModal.dataset.content // Only present when encrypting
+                    })
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    encryptionModal.style.display = 'none';
+                    delete encryptionModal.dataset.content;
+                    window.location.reload();
+                } else {
+                    encryptionError.textContent = result.error || 'Operation failed';
+                }
+            } catch (error) {
+                encryptionError.textContent = 'Error processing request';
+                console.error('Encryption error:', error);
+            }
+        }
+
+        // Add algorithm selection handling
+        const algorithmSelect = document.getElementById('algorithm');
+        const algorithmInfo = document.getElementById('algorithmInfo');
+
+        const algorithmDescriptions = {
+            'aes-256-gcm': 'AES-256-GCM provides authenticated encryption with the highest security level.',
+            'aes-256-cbc': 'AES-256-CBC offers strong encryption with CBC mode.',
+            'aes-256-ctr': 'AES-256-CTR provides stream cipher with counter mode.',
+            'aes-256-cfb': 'AES-256-CFB offers feedback mode encryption.',
+            'aes-256-ofb': 'AES-256-OFB uses output feedback mode.',
+            'aes-192-cbc': 'AES-192-CBC provides good security with CBC mode.',
+            'aes-192-ctr': 'AES-192-CTR uses counter mode operation.',
+            'aes-192-cfb': 'AES-192-CFB with cipher feedback.',
+            'aes-192-ofb': 'AES-192-OFB with output feedback.',
+            'aes-128-gcm': 'AES-128-GCM offers authenticated encryption.',
+            'aes-128-cbc': 'AES-128-CBC standard encryption mode.',
+            'aes-128-ctr': 'AES-128-CTR counter mode operation.',
+            'aes-128-cfb': 'AES-128-CFB cipher feedback mode.',
+            'aes-128-ofb': 'AES-128-OFB output feedback mode.',
+            'bf-cbc': 'Blowfish CBC mode - legacy algorithm.',
+            'bf-cfb': 'Blowfish CFB mode encryption.',
+            'bf-ecb': 'Blowfish ECB mode (not recommended for most uses).',
+            'bf-ofb': 'Blowfish OFB mode operation.',
+            'camellia-256-cbc': 'Camellia 256-bit CBC mode.',
+            'camellia-192-cbc': 'Camellia 192-bit CBC mode.',
+            'camellia-128-cbc': 'Camellia 128-bit CBC mode.',
+            'des-ede3-cbc': 'Triple DES in CBC mode.',
+            'des-cbc': 'Single DES in CBC mode (legacy).',
+            'idea-cbc': 'IDEA cipher in CBC mode.',
+            'idea-cfb': 'IDEA cipher in CFB mode.',
+            'idea-ecb': 'IDEA cipher in ECB mode.',
+            'idea-ofb': 'IDEA cipher in OFB mode.',
+            'rc2-cbc': 'RC2 cipher in CBC mode (legacy).',
+            'rc4': 'RC4 stream cipher (not recommended).',
+            'seed-cbc': 'SEED cipher in CBC mode.',
+            'seed-cfb': 'SEED cipher in CFB mode.',
+            'seed-ecb': 'SEED cipher in ECB mode.',
+            'seed-ofb': 'SEED cipher in OFB mode.'
+        };
+
+        // Add a warning for less secure algorithms
+        algorithmSelect.addEventListener('change', () => {
+            const selected = algorithmSelect.value;
+            algorithmInfo.textContent = algorithmDescriptions[selected];
+            
+            // Add warning for less secure algorithms
+            if (['des-cbc', 'rc4', 'bf-ecb', 'idea-ecb', 'seed-ecb'].includes(selected)) {
+                algorithmInfo.innerHTML += '<br><span class="warning">⚠️ Warning: This algorithm is considered less secure for modern use.</span>';
+            }
+        });
+
+        // Trigger initial description
+        algorithmSelect.dispatchEvent(new Event('change'));
+    </script>
+
+    <style>
+        /* Add these styles to your existing CSS */
+        .encryption-form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .algorithm-select {
+            padding: 8px;
+            border: 1px solid #dadce0;
+            border-radius: 4px;
+            font-size: 14px;
+            background-color: white;
+        }
+
+        .algorithm-info {
+            font-size: 12px;
+            color: #5f6368;
+            margin-top: 4px;
+            font-style: italic;
+        }
+
+        .password-field {
+            padding: 8px;
+            border: 1px solid #dadce0;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .error-message {
+            color: #d93025;
+            font-size: 12px;
+            margin-top: 4px;
+        }
+
+        /* Add these styles */
+        .algorithm-select {
+            max-width: 100%;
+            width: 100%;
+        }
+
+        .warning {
+            color: #d93025;
+            font-weight: bold;
+            display: block;
+            margin-top: 5px;
+        }
+
+        optgroup {
+            font-weight: bold;
+            color: #1a73e8;
+        }
+
+        option {
+            font-weight: normal;
+            color: #3c4043;
+            padding: 4px;
+        }
+
+        .file-preview {
+            margin-bottom: 10px;
+        }
+
+        .image-preview {
+            max-width: 150px;
+            max-height: 100px;
+            border-radius: 4px;
+            object-fit: cover;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: flex-start;
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            transition: background-color 0.2s;
+        }
+
+        .file-icon {
+            font-size: 24px;
+            color: #1a73e8;
+            margin-right: 15px;
+            margin-top: 5px;
+        }
+
+        .fa-image {
+            color: #34a853;
+        }
+
+        .file-details {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .file-name {
+            font-weight: 500;
+            color: #3c4043;
+            margin-top: 5px;
+        }
+
+        .file-actions {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            margin-top: 5px;
+        }
+
+        /* Add responsive styles */
+        @media (max-width: 600px) {
+            .file-item {
+                flex-direction: column;
+            }
+
+            .file-actions {
+                width: 100%;
+                justify-content: flex-end;
+                margin-top: 10px;
+            }
+
+            .image-preview {
+                max-width: 100%;
+                height: auto;
+            }
+        }
+    </style>
+</body>
+</html>

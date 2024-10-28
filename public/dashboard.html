@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secret App - Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-left">
+            <img id="userPicture" class="nav-profile-picture" src="" alt="Profile Picture">
+            <span id="userName" class="nav-username"></span>
+        </div>
+        <div class="nav-right">
+            <div class="burger-menu">
+                <i class="fas fa-bars" id="menuButton"></i>
+                <div class="dropdown-menu" id="dropdownMenu">
+                    <a href="/dashboard" class="active">Dashboard</a>
+                    <a href="/contents">My Files</a>
+                    <a href="/page2">Page 2</a>
+                    <a href="/page3">Page 3</a>
+                    <div class="menu-divider"></div>
+                    <a href="/logout" class="logout-link">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="login-box">
+            <div class="user-profile">
+                <h1>Welcome to Secret</h1>
+                <div class="user-info">
+                    <p id="welcomeMessage"></p>
+                    <p id="userEmail" class="email"></p>
+                </div>
+            </div>
+            <div class="upload-section">
+                <button id="uploadBtn" class="upload-btn">Upload a File</button>
+                <input type="file" id="fileInput" accept=".txt,.jpg,.jpeg,.png,.gif,.bmp" style="display: none">
+                <p id="fileName" class="file-name"></p>
+                <div id="uploadStatus" class="upload-status"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Fetch user data when the page loads
+        window.addEventListener('load', async () => {
+            try {
+                const response = await fetch('/api/user-data');
+                const userData = await response.json();
+                
+                // Update the DOM with user information
+                document.getElementById('welcomeMessage').textContent = 
+                    `Welcome, ${userData.firstName} ${userData.lastName}!`;
+                document.getElementById('userEmail').textContent = userData.email;
+                document.getElementById('userPicture').src = userData.picture;
+                document.getElementById('userName').textContent = 
+                    `${userData.firstName} ${userData.lastName}`;
+            } catch (error) {
+                console.error('Error fetching user data:', error);
+            }
+        });
+
+        // File upload functionality
+        const uploadBtn = document.getElementById('uploadBtn');
+        const fileInput = document.getElementById('fileInput');
+        const fileName = document.getElementById('fileName');
+        const uploadStatus = document.getElementById('uploadStatus');
+
+        uploadBtn.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            fileName.textContent = `Selected file: ${file.name}`;
+            
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                uploadStatus.textContent = 'Uploading...';
+                uploadStatus.className = 'upload-status uploading';
+
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    uploadStatus.textContent = 'File uploaded successfully!';
+                    uploadStatus.className = 'upload-status success';
+                } else {
+                    throw new Error(result.error || 'Upload failed');
+                }
+            } catch (error) {
+                uploadStatus.textContent = `Error: ${error.message}`;
+                uploadStatus.className = 'upload-status error';
+            }
+        });
+
+        // Toggle dropdown menu
+        const menuButton = document.getElementById('menuButton');
+        const dropdownMenu = document.getElementById('dropdownMenu');
+
+        menuButton.addEventListener('click', () => {
+            dropdownMenu.classList.toggle('show');
+        });
+
+        // Close dropdown when clicking outside
+        window.addEventListener('click', (event) => {
+            if (!event.target.matches('.fa-bars') && !event.target.matches('.dropdown-menu')) {
+                if (dropdownMenu.classList.contains('show')) {
+                    dropdownMenu.classList.remove('show');
+                }
+            }
+        });
+    </script>
+</body>
+</html>
